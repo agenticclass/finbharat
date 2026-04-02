@@ -1,6 +1,6 @@
 # FinBharat
 
-**How Reliable is AI Financial Advice for India's 500 Million Non-English Speakers?**
+**AI Financial Advisors Fail on Indian Markets, and Fail Harder in Indian Languages?**
 
 FinBharat is a benchmark for evaluating LLM financial advisory reliability across six Indian languages: English, Hindi, Hinglish, Telugu, Bengali, and Tamil.
 
@@ -70,7 +70,7 @@ pip install requests
 
 ```bibtex
 @article{panuganti2026finbharat,
-  title={FinBharat: How Reliable is AI Financial Advice for India's 500 Million Non-English Speakers?},
+  title={FinBharat: AI Financial Advisors Fail on Indian Markets, and Fail Harder in Indian Languages?},
   author={Panuganti, Rajkiran},
   year={2026}
 }
