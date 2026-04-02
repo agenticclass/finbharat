@@ -1,0 +1,10 @@
+Key findings for paper:
+1. HINDI TAX GAP: English 40.4% vs Hindi 36.0% numerical accuracy (4.4% gap)
+2. BENGALI GAP: English 40.4% vs Bengali 24.8% (15.6% gap!) 
+3. GUARDRAIL LANGUAGE GAP: English 90% compliance vs Hindi 27% vs Bengali 26%
+4. Best model: Mistral Large 3 (42.7%), Worst: GPT-OSS-120B (28.3%)
+5. Qwen Bengali collapse: 397B goes from 44.4% (EN) to 9.9% (BN)
+6. Overall guardrail compliance: 30-54% across models
+7. Jurisdiction confusion: <1% (models know it's India)
+8. Scenarios lowest accuracy: 26.7% (complex real-world questions hardest)
+
