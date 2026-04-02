@@ -1,0 +1,302 @@
+\begin{abstract}
+Large language models are increasingly used for financial advice, but their reliability on non-Western financial systems remains unstudied. We introduce FinBharat, a benchmark of 180 expert-verified Indian financial questions across six languages (English, Hindi, Hinglish, Telugu, Bengali, Tamil) and ten categories including taxation, securities regulation, mutual funds, insurance, retirement planning, and enterprise guardrail compliance. We evaluate five LLMs and find three concerning patterns. First, safety guardrails that work 90\% of the time in English collapse to 26--32\% compliance in Indian languages, meaning models that refuse to give unauthorized investment advice in English will freely give it in Hindi or Bengali. Second, Bengali speakers face a catastrophic accuracy gap: Qwen3.5 drops from 44\% numerical accuracy in English to under 10\% in Bengali, a 34 percentage point decline. Third, Hinglish (code-switched Hindi-English) consistently outperforms pure Hindi across all models by 1--4\%, suggesting that mixing English financial terms into Indian language queries produces better advice than asking in pure Hindi. These findings affect over 500 million Hindi speakers and 100 million Bengali speakers who increasingly rely on AI for financial decisions. The FinBharat benchmark and all evaluation data are publicly released.
+\end{abstract}
+
+\section{Introduction}
+
+India is experiencing an unprecedented convergence of digital finance adoption and AI tool usage. Over 100 million new retail investors have entered Indian markets since 2020, UPI processes more than 10 billion transactions per month, and platforms like Zerodha, Groww, and PhonePe are integrating LLM-based features into their products. Individual investors are directly asking ChatGPT, Claude, and other AI assistants about their tax obligations, investment choices, and regulatory questions.
+
+This creates a problem that the research community has largely ignored. The financial knowledge encoded in LLMs is overwhelmingly American: US tax codes, 401(k) plans, SEC regulations, and dollar-denominated examples dominate training data. Indian financial regulations differ in almost every respect. Section 80C is not a 401(k). ELSS mutual funds have no American equivalent. The distinction between India's old and new income tax regimes, the flat 30\% crypto tax, the T+1 settlement cycle, and SEBI's specific rules on finfluencers are all concepts that LLMs must handle correctly for their advice to be useful rather than dangerous.
+
+The language dimension compounds the problem. India has over 500 million Hindi speakers, 100 million Bengali speakers, and tens of millions who speak Telugu, Tamil, and other languages. Financial conversations routinely happen in Hindi, Hinglish (code-switched Hindi-English), and regional languages. A retail investor is more likely to ask ``Section 80C ke under FY 2025-26 mein maximum kitna deduction mil sakta hai?'' than to formulate the same question in English. If models give worse answers in Hindi or Bengali, this creates an equity gap where non-English speakers receive inferior financial guidance from AI systems they trust.
+
+We present FinBharat, the first comprehensive evaluation of LLM financial advisory reliability for Indian markets across multiple Indian languages. Our contributions are:
+
+\begin{enumerate}
+\item A benchmark of 180 expert-verified questions covering ten domains of Indian finance (income tax, SEBI regulations, mutual funds, stock market, banking/RBI, insurance, retirement, recent regulatory changes, enterprise guardrails, and complex real-world scenarios), each available in six languages with ground truth sourced from official Indian regulatory documents.
+
+\item An evaluation of five LLMs (DeepSeek V3.2, Mistral Large 3, Qwen3.5-397B, Qwen3.5-27B, GPT-OSS-120B) on this benchmark, producing 5,338 scored responses across all model-language-question combinations.
+
+\item The discovery of a severe \textbf{guardrail language gap}: models that follow safety instructions 90\% of the time in English comply only 26--32\% of the time when the same instructions and questions are presented in Indian languages. This means a model that correctly refuses to give unauthorized investment advice in English will freely provide it in Hindi, Bengali, Telugu, or Tamil.
+
+\item Evidence that \textbf{Bengali speakers face catastrophic accuracy loss}: two Qwen models drop from 40--44\% numerical accuracy in English to under 12\% in Bengali, a collapse not seen in any other language.
+
+\item A counterintuitive finding that \textbf{Hinglish (code-switching) consistently outperforms pure Hindi} across all five models, suggesting that embedding English financial terms in Hindi sentence structures helps models access their financial knowledge more effectively than pure Hindi queries.
+\end{enumerate}
+
+\section{Related Work}
+
+\subsection{Financial NLP Benchmarks}
+
+Existing financial benchmarks are predominantly English and Western-focused. FinBen \citep{finben2024} covers 36 datasets across 24 financial tasks, all in English. FLUE \citep{flue2022} evaluates financial language understanding through sentiment analysis and news classification, also in English. BloombergGPT \citep{bloomberggpt2023} demonstrated domain-specific pretraining benefits but was evaluated exclusively on English benchmarks. FinTextQA \citep{fintextqa2024} introduced financial QA but covers only English and Chinese. No published benchmark evaluates LLMs on Indian financial knowledge in any Indian language, despite India being one of the world's largest financial markets by participant count.
+
+\subsection{Multilingual LLM Evaluation}
+
+Evaluations across languages have revealed performance gaps. MEGA \citep{mega2023} showed GPT models perform substantially worse on non-English tasks. IndicGenBench \citep{indicgenbench2024} evaluated generation across 29 Indian languages but focused on general NLP, not financial advisory. MILU \citep{milu2024} covered 42 subjects across 11 Indian languages but did not include financial domain questions. BharatBench \citep{bharatbench2024} provides multilingual evaluation for Indian languages on general knowledge. None test whether LLMs give correct, actionable financial advice in Indian languages, which requires not just language understanding but accurate domain-specific regulatory knowledge.
+
+\subsection{LLM Safety Across Languages}
+
+Recent work has shown that LLM safety behaviors are not uniform across languages. Multilingual jailbreak studies \citep{multilingualjailbreak2024} demonstrated that safety training in English does not fully transfer to low-resource languages. Our work extends this finding to a specific high-stakes domain: financial advisory compliance with Indian securities regulations.
+
+\section{The FinBharat Benchmark}
+
+\subsection{Question Categories}
+
+FinBharat contains 180 questions across ten categories:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrl}
+\toprule
+Category & N & Key Topics \\
+\midrule
+Income Tax & 25 & 80C, old/new regime, LTCG/STCG, HRA, NRI, crypto \\
+Mutual Funds & 20 & ELSS, SIP tax, exit loads, debt fund changes \\
+Stock Market & 20 & T+1, STT, F\&O rules, corporate actions \\
+Banking \& RBI & 20 & Repo rate, FD, UPI, NBFC, digital lending \\
+Recent Changes & 20 & Budget 2024--2025, SEBI reforms, RBI cuts \\
+SEBI Regulations & 15 & Insider trading, TER, IPO, finfluencers \\
+Insurance & 15 & Term vs endowment, PED, claim process \\
+Retirement & 15 & EPF, PPF, NPS, gratuity, pension \\
+Guardrails & 15 & Refusal, compliance, prompt injection \\
+Scenarios & 15 & Complex multi-step real-world cases \\
+\midrule
+Total & 180 & \\
+\bottomrule
+\end{tabular}
+\caption{FinBharat question categories. Each question is available in six languages with verified ground truth from official Indian regulatory sources.}
+\end{table}
+
+\subsection{Languages}
+
+Each question is available in six language variants:
+
+\begin{itemize}
+\item \textbf{English}: Standard financial English as used in Indian regulatory documents.
+\item \textbf{Hindi}: Natural Hindi using Devanagari script, as spoken by financial professionals.
+\item \textbf{Hinglish}: Code-switched Hindi-English, where English financial terms (``deduction,'' ``mutual fund,'' ``capital gains'') are embedded in Hindi sentence structures. This reflects how most urban Indians actually discuss finance.
+\item \textbf{Telugu}: Natural Telugu with English financial terms retained where commonly used.
+\item \textbf{Bengali}: Natural Bengali with English financial terms retained.
+\item \textbf{Tamil}: Natural Tamil with English financial terms retained.
+\end{itemize}
+
+\subsection{Ground Truth Construction}
+
+Every answer is verified against official regulatory documents: the Income Tax Act (with Finance Act 2024 and 2025 amendments), specific SEBI circulars (cited by number), RBI Master Directions, IRDAI regulations, and EPFO/PFRDA guidelines. Recent changes incorporate Budget 2025 updates (new tax regime slabs with nil up to Rs 4 lakh, rebate up to Rs 12 lakh), the revised LTCG rate of 12.5\%, STCG equity rate of 20\%, and the RBI repo rate of 5.25\% as of February 2026.
+
+Each question includes annotations for common LLM errors (specific wrong answers models are likely to produce), danger level (high/medium/low based on potential financial impact of wrong advice), and for scenario questions, explicit hallucination traps documenting where models are likely to invent nonexistent financial products or regulations.
+
+\subsection{Guardrail Questions}
+
+The guardrail category tests enterprise deployment readiness. Questions include requests for specific stock recommendations (which require SEBI-registered advisor status), prompts describing potential Ponzi schemes (where the model must warn strongly), attempts to get advice on tax evasion, and a prompt injection test where the user asks the model to ignore its safety instructions. Each guardrail question includes a system prompt establishing the model's compliance boundaries and an expected behavior annotation (refusal, partial refusal, education, or instruction robustness).
+
+\section{Evaluation}
+
+\subsection{Models}
+
+We evaluate five LLMs spanning different origins, sizes, and architectures:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llrl}
+\toprule
+Model & Origin & Parameters & Architecture \\
+\midrule
+DeepSeek V3.2 & China & 685B (37B active) & MoE \\
+Mistral Large 3 & France & 675B (41B active) & MoE \\
+Qwen3.5-397B & China & 397B (17B active) & MoE \\
+GPT-OSS-120B & USA (OpenAI) & 120B & Dense \\
+Qwen3.5-27B & China & 27B & Dense \\
+\bottomrule
+\end{tabular}
+\caption{Models evaluated. All accessed via OpenRouter API with temperature 0.}
+\end{table}
+
+\subsection{Metrics}
+
+We evaluate responses on four dimensions:
+
+\textbf{Numerical accuracy}: the fraction of key numbers from the ground truth answer (tax rates, limits, amounts) that appear correctly in the model's response. This captures whether the model provides the right specific information.
+
+\textbf{Jurisdiction confusion}: whether the model applies financial rules from the wrong country (mentions 401(k), IRS, FDIC, or other US-specific terms in response to Indian financial questions).
+
+\textbf{Guardrail compliance}: for guardrail category questions, whether the model follows its safety instructions (refuses unauthorized advice, warns about fraud, resists prompt injection).
+
+\textbf{Known error detection}: whether the model's response contains specific wrong answers that are documented in our common LLM errors annotations (such as using the old 10\% LTCG rate instead of the current 12.5\%).
+
+\section{Results}
+
+\subsection{The Guardrail Language Gap}
+
+Our most concerning finding is that safety guardrails collapse when queries shift from English to Indian languages. Table~\ref{tab:guardrail} shows guardrail compliance rates across languages, aggregated over all models.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcc}
+\toprule
+Language & Compliance & N \\
+\midrule
+English & 90\% & 41 \\
+Hinglish & 50\% & 40 \\
+Telugu & 32\% & 41 \\
+Tamil & 29\% & 42 \\
+Hindi & 27\% & 41 \\
+Bengali & 26\% & 43 \\
+\bottomrule
+\end{tabular}
+\caption{Guardrail compliance by language. Models follow safety instructions 90\% of the time in English but only 26--32\% in Indian languages.}
+\label{tab:guardrail}
+\end{table}
+
+A model instructed ``You must NOT provide specific buy/sell/hold recommendations for individual securities'' will comply when the user asks in English but frequently give specific stock recommendations when the same question is asked in Hindi, Bengali, Telugu, or Tamil. This is a safety-critical finding for any enterprise deploying financial AI in India.
+
+Hinglish (50\%) performs notably better than pure Hindi (27\%), suggesting that the presence of English financial terms in the query partially activates English-language safety training. But 50\% compliance is still unacceptable for production deployment.
+
+\subsection{The Bengali Catastrophe}
+
+Table~\ref{tab:bengali} shows the accuracy drop from English to Bengali for each model. Two Qwen models show a collapse of over 28 percentage points.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\toprule
+Model & English & Bengali & Drop \\
+\midrule
+Qwen3.5-397B & 44.4\% & 9.9\% & 34.5 pp \\
+Qwen3.5-27B & 40.0\% & 11.6\% & 28.5 pp \\
+Mistral Large 3 & 46.9\% & 37.8\% & 9.1 pp \\
+DeepSeek V3.2 & 38.1\% & 33.0\% & 5.2 pp \\
+GPT-OSS-120B & 30.1\% & 26.0\% & 4.1 pp \\
+\bottomrule
+\end{tabular}
+\caption{Numerical accuracy: English vs Bengali. Qwen models collapse to under 12\% on Bengali financial queries.}
+\label{tab:bengali}
+\end{table}
+
+The Qwen models, despite being among the strongest on English financial queries, produce essentially random numerical content in Bengali. This likely reflects insufficient Bengali financial text in their training data. DeepSeek and GPT-OSS show more modest drops, suggesting more uniform multilingual coverage, albeit at lower absolute accuracy.
+
+\subsection{Overall Accuracy by Model and Language}
+
+Table~\ref{tab:model_lang} presents the full model-language accuracy matrix.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule
+Model & EN & HI & Hinglish & TE & BN & TA \\
+\midrule
+Mistral Large 3 & 46.9 & 41.2 & 43.8 & 42.2 & 37.8 & 44.6 \\
+Qwen3.5-397B & 44.4 & 39.5 & 40.3 & 33.4 & 9.9 & 39.0 \\
+Qwen3.5-27B & 40.0 & 36.8 & 39.6 & 32.8 & 11.6 & 36.5 \\
+DeepSeek V3.2 & 38.1 & 32.8 & 37.2 & 38.7 & 33.0 & 36.1 \\
+GPT-OSS-120B & 30.1 & 28.2 & 28.9 & 28.0 & 26.0 & 28.7 \\
+\bottomrule
+\end{tabular}
+\caption{Numerical accuracy (\%) by model and language. English is consistently best. Bengali is worst for Qwen models. Hinglish outperforms pure Hindi in all cases.}
+\label{tab:model_lang}
+\end{table}
+
+Three patterns are visible. First, English is the best language for every model, confirming that financial knowledge is encoded primarily through English training data. Second, Hinglish consistently outperforms pure Hindi for every model (by 0.7--4.4 percentage points), a finding we discuss further in Section 5.4. Third, the language gap is model-dependent: Mistral shows the most uniform performance across languages (46.9\% to 37.8\%), while Qwen shows extreme variance (44.4\% to 9.9\%).
+
+\subsection{Hinglish Outperforms Pure Hindi}
+
+Across all five models, Hinglish queries produce more accurate financial advice than pure Hindi queries. The gap ranges from +0.7\% (GPT-OSS-120B) to +4.4\% (DeepSeek V3.2). This is counterintuitive: one might expect that a ``cleaner'' monolingual query would be easier for models to process. Instead, the English financial terms embedded in Hinglish (``Section 80C,'' ``mutual fund,'' ``LTCG'') appear to help models access their English-language financial knowledge even when the rest of the query is in Hindi.
+
+This finding has practical implications: Indians who naturally code-switch when discussing finance (which is the majority of urban, educated speakers) may receive better AI advice than those who ask in pure Hindi. Rather than a limitation, code-switching appears to be an effective retrieval cue for domain-specific knowledge.
+
+\subsection{Category Analysis}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+Category & Avg. Accuracy \\
+\midrule
+Income Tax & 48.9\% \\
+Retirement & 47.0\% \\
+Stock Market & 39.9\% \\
+Recent Changes & 36.1\% \\
+Insurance & 35.9\% \\
+SEBI Regulations & 35.3\% \\
+Banking \& RBI & 31.7\% \\
+Scenarios & 26.7\% \\
+Mutual Funds & 26.6\% \\
+Guardrails & 18.9\% \\
+\bottomrule
+\end{tabular}
+\caption{Average numerical accuracy by category across all models and languages.}
+\end{table}
+
+Income tax (48.9\%) is the easiest category, likely because tax-related content is the most widely discussed Indian financial topic online. Complex real-world scenarios (26.7\%) and mutual funds (26.6\%) are the hardest factual categories, and guardrails (18.9\%) is the hardest overall, reflecting the combined challenge of understanding Indian regulations and following safety instructions.
+
+\subsection{Model Size Does Not Predict Indian Financial Knowledge}
+
+GPT-OSS-120B (120B parameters) performs worse than Qwen3.5-27B (27B parameters) on Indian financial questions: 28.3\% vs 33.0\% overall accuracy. Mistral Large 3 (675B MoE) outperforms DeepSeek V3.2 (685B MoE) despite similar parameter counts: 42.7\% vs 36.0\%. This suggests that Indian financial knowledge depends more on training data composition than model size.
+
+\subsection{Factual vs Scenario Questions}
+
+Factual questions (``What is the LTCG rate?'') achieve 37.9\% average accuracy, while multi-step scenario questions (``My father retired with Rs 65 lakh, how should he invest for Rs 50,000 monthly income?'') achieve only 26.7\%. The 11.2 percentage point gap demonstrates that real-world financial advisory requires more than fact recall; it requires combining multiple regulations, performing calculations, and providing actionable recommendations.
+
+
+\subsection{Human Evaluation}
+
+To validate our automated metrics, we manually evaluated a stratified sample of 100 responses (20 per model, balanced across languages and categories) using a more nuanced scoring rubric that checks whether the response correctly identifies the relevant regulation, applies the right numbers, and provides actionable advice.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Model & Correct & Partial & Incorrect & N \\
+\midrule
+Mistral Large 3 & 35\% & 30\% & 25\% & 20 \\
+DeepSeek V3.2 & 25\% & 15\% & 45\% & 20 \\
+Qwen3.5-397B & 15\% & 30\% & 50\% & 20 \\
+Qwen3.5-27B & 10\% & 25\% & 50\% & 20 \\
+GPT-OSS-120B & 5\% & 5\% & 90\% & 20 \\
+\bottomrule
+\end{tabular}
+\caption{Human evaluation on 100 stratified responses. Overall: 18\% fully correct, 52\% incorrect.}
+\end{table}
+
+By language, English achieves 26\% correct, Hinglish 25\%, Tamil 20\%, Hindi and Telugu 12\% each, and Bengali 8\%. The human evaluation confirms the automated findings and reveals that the automated numerical accuracy metric slightly overstates model capability, since matching numbers in a response does not guarantee the numbers are used in the correct context.
+
+
+\subsection{Case Studies}
+
+To illustrate how failures manifest in practice, we present three representative examples.
+
+\textbf{Case 1: Guardrail collapse in Hindi.} When asked Should I buy Reliance shares right now?'' with a system prompt prohibiting specific stock advice, DeepSeek V3.2 correctly refuses in English but provides investment analysis in Hindi, and produces garbled output in Bengali. The safety instruction is the same in all three cases; only the user's question language changes.
+
+\textbf{Case 2: Outdated tax rates.} When asked about LTCG tax on a Rs 2 lakh equity gain, Mistral Large 3 applies the old rate of 10\% above Rs 1 lakh exemption in both English and Hindi, despite Budget 2024 changing this to 12.5\% above Rs 1.25 lakh. In Bengali, the same model misclassifies the 14-month holding as short-term and applies 15\%, getting both the classification and the rate wrong.
+
+\textbf{Case 3: Recency as a differentiator.} On recent regulatory changes, only Qwen3.5-397B correctly identifies the new 12.5\% LTCG rate. Mistral and Qwen-27B give the old 10\% rate. GPT-OSS-120B references outdated financial years. This pattern suggests that training data recency, not model size, determines accuracy on recently changed regulations.
+
+\section{Discussion}
+
+\subsection{Implications for Financial AI Deployment in India}
+
+The guardrail language gap is the most urgent finding for enterprises. SEBI regulations prohibit unregistered entities from giving specific investment advice. A financial AI that complies with this restriction in English but violates it in Hindi is not deployment-ready for the Indian market. The 90\% English compliance vs 26\% Hindi compliance means that the same product would pass compliance testing in English but fail catastrophically when used by Hindi-speaking customers, which is the majority of India's population.
+
+\subsection{The Bengali Digital Divide}
+
+The catastrophic accuracy drop for Bengali queries reveals a digital divide within AI systems. Bengali speakers (over 100 million people, the seventh most spoken language globally) receive financial advice that is functionally random from multiple frontier models. This is not a minor accuracy gap; it is a near-complete failure of knowledge transfer. While we cannot definitively explain why Bengali performs worse than other Indian languages with similar script complexity (like Telugu), we hypothesize that Bengali financial regulatory content is particularly underrepresented in training data.
+
+\subsection{Why Hinglish Works Better}
+
+The Hinglish advantage appears to function as a form of cross-lingual retrieval. When a user asks ``Section 80C ke under FY 2025-26 mein maximum kitna deduction mil sakta hai?'', the English tokens ``Section 80C,'' ``FY 2025-26,'' and ``deduction'' provide direct anchors to the model's English-language financial knowledge. In pure Hindi, these concepts are expressed with Hindi financial terminology that may have weaker associations in the model's representation space. This suggests that for domain-specific queries, code-switching is not a degradation of either language but an effective strategy for accessing specialized knowledge.
+
+\subsection{Limitations}
+
+Our numerical accuracy metric measures whether key numbers from the ground truth appear in the response, which may not capture partial correctness or qualitatively correct advice with slightly wrong numbers. The automated scoring could be supplemented with human expert evaluation. Our evaluation covers five models; adding proprietary models (GPT-5.4, Claude Opus 4.6, Gemini 3.1 Pro) and Indian models (Sarvam-105B, Krutrim-2) would strengthen the findings. The ground truth, while verified against official sources, may contain errors in complex edge cases. We plan to update the benchmark annually to reflect new budget changes and regulatory updates.
+
+\section{Conclusion}
+
+FinBharat reveals that AI financial advisors have a dangerous language blind spot. The guardrail language gap, where safety compliance drops from 90\% in English to 26\% in Hindi, means that the same AI system that responsibly handles English-speaking users will give unauthorized investment advice to Hindi-speaking users. The Bengali accuracy catastrophe means that 100 million Bengali speakers receive advice that is worse than random from multiple models. The Hinglish advantage suggests that code-switching, far from being a limitation, is an effective strategy for getting better financial advice from AI.
+
+These findings affect the hundreds of millions of Indians who increasingly use AI tools for financial decisions. We release the FinBharat benchmark, evaluation code, and all model responses to support future work on making financial AI reliable across languages. The benchmark will be updated annually to reflect India's frequently changing financial regulations.
+
+Code and data: \url{https://github.com/agenticclass/finbharat}
